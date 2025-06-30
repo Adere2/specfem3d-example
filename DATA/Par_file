@@ -206,7 +206,7 @@ RATIO_BY_WHICH_TO_INCREASE_IT   = 1.5d0
 #MOVIE_COARSE does not work with create_movie_AVS_DX
 MOVIE_SURFACE                   = .true.
 MOVIE_VOLUME                    = .false.
-MOVIE_COARSE                    = .true.
+MOVIE_COARSE                    = .false.
 NTSTEP_BETWEEN_FRAMES           = 50
 HDUR_MOVIE                      = 0.d0
 
