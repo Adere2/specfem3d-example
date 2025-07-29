@@ -5,83 +5,45 @@
 #-----------------------------------------------------------
 
 # forward or adjoint simulation
-SIMULATION_TYPE                 = 1   # set to 1 for forward simulations, 2 for adjoint simulations for sources, and 3 for kernel simulations
-NOISE_TOMOGRAPHY                = 0   # flag of noise tomography, three steps (1,2,3). If earthquake simulation, set it to 0.
-SAVE_FORWARD                    = .false.   # save last frame of forward simulation or not
+# 1 = forward, 2 = adjoint, 3 = both simultaneously
+SIMULATION_TYPE                 = 1
+# 0 = earthquake simulation,  1/2/3 = three steps in noise simulation
+NOISE_TOMOGRAPHY                = 0
+SAVE_FORWARD                    = .false.
 
-# number of chunks (1,2,3 or 6)
-NCHUNKS                         = 1
+# solve a full FWI inverse problem from a single calling program with no I/Os, storing everything in memory,
+# or run a classical forward or adjoint problem only and save the seismograms and/or sensitivity kernels to disk (with costlier I/Os)
+INVERSE_FWI_FULL_PROBLEM        = .false.
 
-# angular width of the first chunk (not used if full sphere with six chunks)
-ANGULAR_WIDTH_XI_IN_DEGREES     = 20.d0   # angular size of a chunk
-ANGULAR_WIDTH_ETA_IN_DEGREES    = 20.d0
-CENTER_LATITUDE_IN_DEGREES      = 40.d0
-CENTER_LONGITUDE_IN_DEGREES     = 25.d0
-GAMMA_ROTATION_AZIMUTH          = 0.d0
+# UTM projection parameters
+# Use a negative zone number for the Southern hemisphere:
+# The Northern hemisphere corresponds to zones +1 to +60,
+# The Southern hemisphere corresponds to zones -1 to -60.
+UTM_PROJECTION_ZONE             = 11
+SUPPRESS_UTM_PROJECTION         = .true.
 
-# number of elements at the surface along the two sides of the first chunk
-# (must be multiple of 16 and 8 * multiple of NPROC below)
-NEX_XI                          = 64
-NEX_ETA                         = 64
+# number of MPI processors
+NPROC                           = 4
 
-# number of MPI processors along the two sides of the first chunk
-NPROC_XI                        = 2
-NPROC_ETA                       = 2
+# time step parameters
+NSTEP                           = 5000
+DT                              = 0.05
+
+# set to true to use local-time stepping (LTS)
+LTS_MODE                        = .false.
+
+# Partitioning algorithm for decompose_mesh
+# choose partitioner: 1==SCOTCH (default), 2==METIS, 3==PATOH, 4==ROWS_PART
+PARTITIONING_TYPE               = 1
 
 #-----------------------------------------------------------
 #
-# Model
+# LDDRK time scheme
 #
 #-----------------------------------------------------------
-
-# 1D models with real structure:
-# 1D_isotropic_prem, 1D_transversely_isotropic_prem, 1D_iasp91, 1D_1066a, 1D_ak135f_no_mud, 1D_ref, 1D_ref_iso, 1D_jp3d,1D_sea99
-#
-# 1D models with only one fictitious averaged crustal layer:
-# 1D_isotropic_prem_onecrust, 1D_transversely_isotropic_prem_onecrust, 1D_iasp91_onecrust, 1D_1066a_onecrust, 1D_ak135f_no_mud_onecrust
-#
-# fully 3D models:
-# transversely_isotropic_prem_plus_3D_crust_2.0, 3D_anisotropic, 3D_attenuation,
-# s20rts, s40rts, s362ani, s362iso, s362wmani, s362ani_prem, s362ani_3DQ, s362iso_3DQ,
-# s29ea, sea99_jp3d1994, sea99, jp3d1994, heterogen, full_sh, sgloberani_aniso, sgloberani_iso
-#
-# 3D crustal models:
-# crust1.0, crust2.0, EPcrust, EuCRUST, crustmaps, crustSH
-#
-# Mars models:
-# 1D_Sohl, 1D_Sohl_3D_crust, 1D_case65TAY, 1D_case65TAY_3D_crust, mars_1D, mars_1D_3D_crust
-#
-# Moon models:
-# vpremoon
-#
-# 3D models with 3D crust: append "_**crustname**" to the mantle model name
-#                          to take a 3D crustal model (by default crust2.0 is taken for 3D mantle models)
-#                          e.g. s20rts_crust1.0, s362ani_crustmaps, full_sh_crustSH, sglobe_EPcrust, etc.
-#
-# 3D models with 1D crust: append "_1Dcrust" to the 3D model name
-#                          to take the 1D crustal model from the
-#                          associated reference model rather than the default 3D crustal model
-#                          e.g. s20rts_1Dcrust, s362ani_1Dcrust, etc.
-#
-MODEL                           = 1D_transversely_isotropic_prem
-
-# parameters describing the Earth model
-OCEANS                          = .true.
-ELLIPTICITY                     = .true.
-TOPOGRAPHY                      = .true.
-GRAVITY                         = .true.
-ROTATION                        = .true.
-ATTENUATION                     = .true.
-
-# full gravity calculation by solving Poisson's equation for gravity potential instead of using a Cowling approximation
-# (must have also GRAVITY flag set to .true. to become active)
-FULL_GRAVITY                    = .false.
-# for full gravity calculation, set to 0 == builtin or 1 == PETSc Poisson solver
-# (the PETSc solver option needs the PETSc library installed; code configuration --with-petsc)
-POISSON_SOLVER                  = 0
-
-# record length in minutes
-RECORD_LENGTH_IN_MINUTES        = 2.5d0
+USE_LDDRK                       = .false.
+INCREASE_CFL_FOR_LDDRK          = .false.
+RATIO_BY_WHICH_TO_INCREASE_IT   = 1.4
 
 #-----------------------------------------------------------
 #
@@ -89,19 +51,46 @@ RECORD_LENGTH_IN_MINUTES        = 2.5d0
 #
 #-----------------------------------------------------------
 
-## regional mesh cut-off
-# using this flag will cut-off the mesh in the mantle at a layer matching to the given cut-off depth.
-# this flag only has an effect for regional simulations, i.e., for NCHUNKS values less than 6.
-REGIONAL_MESH_CUTOFF            = .false.
+# Number of nodes for 2D and 3D shape functions for hexahedra.
+# We use either 8-node mesh elements (bricks) or 27-node elements.
+# If you use our internal mesher, the only option is 8-node bricks (27-node elements are not supported).
+NGNOD                           = 8
 
-# regional mesh cut-off depth (in km)
-# possible selections are: 24.4d0, 80.d0, 220.d0, 400.d0, 600.d0, 670.d0, 771.d0
-REGIONAL_MESH_CUTOFF_DEPTH      = 400.d0
+# models:
+# available options are:
+#   default (model parameters described by mesh properties)
+# 1D models available are:
+#   1d_prem,1d_socal,1d_cascadia
+# 3D models available are:
+#   aniso,external,gll,salton_trough,tomo,SEP,coupled,...
+MODEL                           = default
 
-# regional mesh cut-off w/ a second doubling layer below 220km interface
-# (by default, a first doubling layer will be added below the Moho, and a second one below the 771km-depth layer.
-#  Setting this flag to .true., will move the second one below the 220km-depth layer for regional mesh cut-offs only.)
-REGIONAL_MESH_ADD_2ND_DOUBLING  = .false.
+# path for external tomographic models files
+TOMOGRAPHY_PATH                 = DATA/tomo_files/
+# if you are using a SEP model (oil-industry format)
+SEP_MODEL_DIRECTORY             = DATA/my_SEP_model/
+
+#-----------------------------------------------------------
+
+# parameters describing the model
+APPROXIMATE_OCEAN_LOAD          = .false.
+TOPOGRAPHY                      = .false.
+ATTENUATION                     = .false.
+ANISOTROPY                      = .false.
+GRAVITY                         = .false.
+
+# in case of attenuation, reference frequency in Hz at which the velocity values in the velocity model are given (unused otherwise)
+ATTENUATION_f0_REFERENCE        = 18.d0
+
+# attenuation period range over which we try to mimic a constant Q factor
+MIN_ATTENUATION_PERIOD          = 999999998.d0
+MAX_ATTENUATION_PERIOD          = 999999999.d0
+# ignore this range and ask the code to compute it automatically instead based on the estimated resolution of the mesh (use this unless you know what you are doing)
+COMPUTE_FREQ_BAND_AUTOMATIC     = .true.
+
+# Olsen's constant for Q_mu = constant * V_s attenuation rule
+USE_OLSEN_ATTENUATION           = .false.
+OLSEN_ATTENUATION_RATIO         = 0.05
 
 #-----------------------------------------------------------
 #
@@ -109,91 +98,47 @@ REGIONAL_MESH_ADD_2ND_DOUBLING  = .false.
 #
 #-----------------------------------------------------------
 
+# C-PML boundary conditions for a regional simulation
+# (if set to .false., and STACEY_ABSORBING_CONDITIONS is also set to .false., you get a free surface instead
+# in the case of elastic or viscoelastic mesh elements, and a rigid surface in the case of acoustic (fluid) elements
+PML_CONDITIONS                  = .false.
+
+# C-PML top surface
+PML_INSTEAD_OF_FREE_SURFACE     = .false.
+
+# C-PML dominant frequency
+f0_FOR_PML                      = 0.05555
+
+# parameters used to rotate C-PML boundary conditions by a given angle (not completed yet)
+# ROTATE_PML_ACTIVATE           = .false.
+# ROTATE_PML_ANGLE              = 0.
+
 # absorbing boundary conditions for a regional simulation
-ABSORBING_CONDITIONS            = .true.
+# (if set to .false., and PML_CONDITIONS is also set to .false., you get a free surface instead
+# in the case of elastic or viscoelastic mesh elements, and a rigid surface in the case of acoustic (fluid) elements
+STACEY_ABSORBING_CONDITIONS     = .true.
 
-# run global simulation for a circular region and apply high attenuation for the rest of the model
-# this creates an absorbing boundary with less reflection than stacey at a cost of 6x the computational cost
-# NCHUNKS must be set to 6 to enable this flag
-ABSORB_USING_GLOBAL_SPONGE      = .false.
+# absorbing top surface (defined in mesh as 'free_surface_file')
+STACEY_INSTEAD_OF_FREE_SURFACE  = .false.
 
-# location and size of the region with no sponge (the region to run simulation)
-SPONGE_LATITUDE_IN_DEGREES      = 40.d0
-SPONGE_LONGITUDE_IN_DEGREES     = 25.d0
-SPONGE_RADIUS_IN_DEGREES        = 25.d0
-
-#-----------------------------------------------------------
-#
-# undoing attenuation for sensitivity kernel calculations
-#
-#-----------------------------------------------------------
-
-# to undo attenuation for sensitivity kernel calculations or forward runs with SAVE_FORWARD
-# use one (and only one) of the two flags below. UNDO_ATTENUATION is much better (it is exact)
-# but requires a significant amount of disk space for temporary storage.
-PARTIAL_PHYS_DISPERSION_ONLY    = .true.
-UNDO_ATTENUATION                = .false.
-
-## undo attenuation memory
-# How much memory (in GB) is installed on your machine per CPU core
-# (only used for UNDO_ATTENUATION, can be ignored otherwise)
-# Beware, this value MUST be given per core, i.e. per MPI thread, i.e. per MPI rank, NOT per node.
-# This value is for instance:
-#   -  4 GB on Tiger at Princeton
-#   -  4 GB on TGCC Curie in Paris
-#   -  4 GB on Titan at ORNL when using CPUs only (no GPUs); start your run with "aprun -n$NPROC -N8 -S4 -j1"
-#   -  2 GB on the machine used by Christina Morency
-#   -  2 GB on the TACC machine used by Min Chen
-#   -  1.5 GB on the GPU cluster in Marseille
-# When running on GPU machines, it is simpler to set PERCENT_OF_MEM_TO_USE_PER_CORE = 100.d0
-# and then set MEMORY_INSTALLED_PER_CORE_IN_GB to the amount of memory that you estimate is free (rather than installed)
-# on the host of the GPU card while running your GPU job.
-# For GPU runs on Titan at ORNL, use PERCENT_OF_MEM_TO_USE_PER_CORE = 100.d0 and MEMORY_INSTALLED_PER_CORE_IN_GB = 25.d0
-# and run your job with "aprun -n$NPROC -N1 -S1 -j1"
-# (each host has 32 GB on Titan, each GPU has 6 GB, thus even if all the GPU arrays are duplicated on the host
-#  this leaves 32 - 6 = 26 GB free on the host; leaving 1 GB for the Linux system, we can safely use 100% of 25 GB)
-MEMORY_INSTALLED_PER_CORE_IN_GB = 4.d0
-# What percentage of this total do you allow us to use for arrays to undo attenuation, keeping in mind that you
-# need to leave some memory available for the GNU/Linux system to run
-# (a typical value is 85%; any value below is fine but the code will then save a lot of data to disk;
-#  values above, say 90% or 92%, can be OK on some systems but can make the adjoint code run out of memory
-#  on other systems, depending on how much memory per node the GNU/Linux system needs for itself; thus you can try
-#  a higher value and if the adjoint crashes then try again with a lower value)
-PERCENT_OF_MEM_TO_USE_PER_CORE  = 85.d0
-
-## exact mass matrices for rotation
-# three mass matrices instead of one are needed to handle rotation very accurately;
-# otherwise rotation is handled slightly less accurately (but still reasonably well);
-# set to .true. if you are interested in precise effects related to rotation;
-# set to .false. if you are solving very large inverse problems at high frequency and also undoing attenuation exactly
-#
-# using the UNDO_ATTENUATION flag above, in which case saving as much memory as possible can be a good idea.
-# You can also safely set it to .false. if you are not in a period range in which rotation matters,
-# e.g. if you are targetting very short-period body waves. if in doubt, set to .true.
-#
-# You can safeely set it to .true. if you have ABSORBING_CONDITIONS above, because in that case the code
-# will use three mass matrices anyway and thus there is no additional memory cost.
-# this flag is of course unused if ROTATION above is set to .false.
-EXACT_MASS_MATRIX_FOR_ROTATION  = .false.
+# When STACEY_ABSORBING_CONDITIONS is set to .true. :
+# absorbing conditions are defined in xmin, xmax, ymin, ymax and zmin
+# this option BOTTOM_FREE_SURFACE can be set to .true. to
+# make zmin free surface instead of absorbing condition
+BOTTOM_FREE_SURFACE             = .false.
 
 #-----------------------------------------------------------
 #
-# LDDRK time scheme
+# undoing attenuation and/or PMLs for sensitivity kernel calculations
 #
 #-----------------------------------------------------------
 
-# this for LDDRK high-order time scheme instead of Newmark
-USE_LDDRK                       = .false.
-
-# the maximum CFL of LDDRK is significantly higher than that of the Newmark scheme,
-# in a ratio that is theoretically 1.327 / 0.697 = 1.15 / 0.604 = 1.903 for a solid with Poisson's ratio = 0.25
-# and for a fluid (see the manual of the 2D code, SPECFEM2D, Tables 4.1 and 4.2, and that ratio does not
-# depend on whether we are in 2D or in 3D). However in practice a ratio of about 1.5 to 1.7 is often safer
-# (for instance for models with a large range of Poisson's ratio values).
-# Since the code computes the time step using the Newmark scheme, for LDDRK we will simply
-# multiply that time step by this ratio when LDDRK is on and when flag INCREASE_CFL_FOR_LDDRK is true.
-INCREASE_CFL_FOR_LDDRK          = .true.
-RATIO_BY_WHICH_TO_INCREASE_IT   = 1.5d0
+# to undo attenuation and/or PMLs for sensitivity kernel calculations or forward runs with SAVE_FORWARD
+# use the flag below. It performs undoing of attenuation and/or of PMLs in an exact way for sensitivity kernel calculations
+# but requires disk space for temporary storage, and uses a significant amount of memory used as buffers for temporary storage.
+# When that option is on the second parameter indicates how often the code dumps restart files to disk (if in doubt, use something between 100 and 1000).
+UNDO_ATTENUATION_AND_OR_PML     = .false.
+NT_DUMP_ATTENUATION             = 500
 
 #-----------------------------------------------------------
 #
@@ -202,44 +147,26 @@ RATIO_BY_WHICH_TO_INCREASE_IT   = 1.5d0
 #-----------------------------------------------------------
 
 # save AVS or OpenDX movies
-#MOVIE_COARSE saves movie only at corners of elements (SURFACE OR VOLUME)
-#MOVIE_COARSE does not work with create_movie_AVS_DX
-MOVIE_SURFACE                   = .true.
+# MOVIE_TYPE = 1 to show the top surface
+# MOVIE_TYPE = 2 to show all the external faces of the mesh
+CREATE_SHAKEMAP                 = .false.
+MOVIE_SURFACE                   = .false.
+MOVIE_TYPE                      = 1
 MOVIE_VOLUME                    = .false.
-MOVIE_COARSE                    = .false.
-NTSTEP_BETWEEN_FRAMES           = 50
-HDUR_MOVIE                      = 0.d0
+SAVE_DISPLACEMENT               = .false.
+MOVIE_VOLUME_STRESS             = .false.
+USE_HIGHRES_FOR_MOVIES          = .false.
+NTSTEP_BETWEEN_FRAMES           = 200
+HDUR_MOVIE                      = 0.0
 
-# save movie in volume.  Will save element if center of element is in prescribed volume
-# top/bottom: depth in KM, use MOVIE_TOP = -100 to make sure the surface is stored.
-# west/east: longitude, degrees East [-180/180] top/bottom: latitute, degrees North [-90/90]
-# start/stop: frames will be stored at MOVIE_START + i*NSTEP_BETWEEN_FRAMES, where i=(0,1,2..) and iNSTEP_BETWEEN_FRAMES <= MOVIE_STOP
-# movie_volume_type: 1=strain, 2=time integral of strain, 3=\mu*time integral of strain
-# type 4 saves the trace and deviatoric stress in the whole volume, 5=displacement, 6=velocity
-MOVIE_VOLUME_TYPE               = 2
-MOVIE_TOP_KM                    = -100.0
-MOVIE_BOTTOM_KM                 = 1000.0
-MOVIE_WEST_DEG                  = -90.0
-MOVIE_EAST_DEG                  = 90.0
-MOVIE_NORTH_DEG                 = 90.0
-MOVIE_SOUTH_DEG                 = -90.0
-MOVIE_START                     = 0
-MOVIE_STOP                      = 40000
-
-# save mesh files to check the mesh
+# save AVS or OpenDX mesh files to check the mesh
 SAVE_MESH_FILES                 = .true.
 
-# restart files (number of runs can be 1 or higher, choose 1 for no restart files)
-NUMBER_OF_RUNS                  = 1
-NUMBER_OF_THIS_RUN              = 1
-
-# path to store the local database files on each node
-LOCAL_PATH                      = ./DATABASES_MPI
-# temporary wavefield/kernel/movie files
-LOCAL_TMP_PATH                  = ./DATABASES_MPI
+# path to store the local database file on each node
+LOCAL_PATH                      = OUTPUT_FILES/DATABASES_MPI
 
 # interval at which we output time step info and max of norm of displacement
-NTSTEP_BETWEEN_OUTPUT_INFO      = 200
+NTSTEP_BETWEEN_OUTPUT_INFO      = 500
 
 #-----------------------------------------------------------
 #
@@ -247,27 +174,43 @@ NTSTEP_BETWEEN_OUTPUT_INFO      = 200
 #
 #-----------------------------------------------------------
 
+# sources and receivers Z coordinates given directly (i.e. as their true position) instead of as their depth
+USE_SOURCES_RECEIVERS_Z         = .false.
+
 # use a (tilted) FORCESOLUTION force point source (or several) instead of a CMTSOLUTION moment-tensor source.
-# This can be useful e.g. for asteroid simulations
+# This can be useful e.g. for oil industry foothills simulations or asteroid simulations
 # in which the source is a vertical force, normal force, tilted force, impact etc.
 # If this flag is turned on, the FORCESOLUTION file must be edited by giving:
 # - the corresponding time-shift parameter,
-# - the half duration parameter of the source,
+# - the half duration (hdur, in s) for Gaussian/Step function, dominant frequency (f0, in Hz) for Ricker,
 # - the coordinates of the source,
-# - the source time function of the source,
+# - the source time function type (0=Gaussian function, 1=Ricker wavelet, 2=Step function),
 # - the magnitude of the force source,
 # - the components of a (non necessarily unitary) direction vector for the force source in the E/N/Z_UP basis.
 # The direction vector is made unitary internally in the code and thus only its direction matters here;
 # its norm is ignored and the norm of the force used is the factor force source times the source time function.
 USE_FORCE_POINT_SOURCE          = .false.
 
-# use monochromatic source time function for CMTSOLUTION moment-tensor source.
-# half duration is interpreted as a PERIOD just to avoid changing CMTSOLUTION file format
-# default is .false. which uses Heaviside function
-USE_MONOCHROMATIC_CMT_SOURCE    = .false.
+# set to true to use a Ricker source time function instead of the source time functions set by default
+# to represent a (tilted) FORCESOLUTION force point source or a CMTSOLUTION moment-tensor source.
+USE_RICKER_TIME_FUNCTION        = .false.
+
+# use an external source time function
+# you must add a file with your source time function and the file name path
+# relative to working directory at the end of CMTSOLUTION or FORCESOLUTION file
+# (with multiple sources, one file per source is required).
+# This file must have a single column containing the amplitudes of the source at all time steps;
+# time step size used must be equal to DT as defined at the beginning of this Par_file.
+# Be sure when this option is .false. to remove the name of stf file in CMTSOLUTION or FORCESOLUTION
+USE_EXTERNAL_SOURCE_FILE        = .false.
 
 # print source time function
-PRINT_SOURCE_TIME_FUNCTION      = .true.
+PRINT_SOURCE_TIME_FUNCTION      = .false.
+
+# source encoding
+# (for acoustic simulations only for now) determines source encoding factor +/-1 depending on sign of moment tensor
+# (see e.g. Krebs et al., 2009. Fast full-wavefield seismic inversion using encoded sources, Geophysics, 74 (6), WCC177-WCC188.)
+USE_SOURCE_ENCODING             = .false.
 
 #-----------------------------------------------------------
 #
@@ -275,32 +218,39 @@ PRINT_SOURCE_TIME_FUNCTION      = .true.
 #
 #-----------------------------------------------------------
 
-# interval in time steps for temporary writing of seismograms
-NTSTEP_BETWEEN_OUTPUT_SEISMOS   = 5000000
+# interval in time steps for writing of seismograms
+NTSTEP_BETWEEN_OUTPUT_SEISMOS   = 10000
 
 # set to n to reduce the sampling rate of output seismograms by a factor of n
 # defaults to 1, which means no down-sampling
 NTSTEP_BETWEEN_OUTPUT_SAMPLE    = 1
 
+# decide if we save displacement, velocity, acceleration and/or pressure in forward runs (they can be set to true simultaneously)
+# currently pressure seismograms are implemented in acoustic (i.e. fluid) elements only
+SAVE_SEISMOGRAMS_DISPLACEMENT   = .true.
+SAVE_SEISMOGRAMS_VELOCITY       = .false.
+SAVE_SEISMOGRAMS_ACCELERATION   = .false.
+SAVE_SEISMOGRAMS_PRESSURE       = .false.   # currently implemented in acoustic (i.e. fluid) elements only
+
 # option to save strain seismograms
 # this option is useful for strain Green's tensor
-# this feature is currently under development
 SAVE_SEISMOGRAMS_STRAIN         = .false.
 
 # save seismograms also when running the adjoint runs for an inverse problem
 # (usually they are unused and not very meaningful, leave this off in almost all cases)
 SAVE_SEISMOGRAMS_IN_ADJOINT_RUN = .true.
 
-# output format for the seismograms (one can use either or all of the three formats)
-OUTPUT_SEISMOS_ASCII_TEXT       = .true.
-OUTPUT_SEISMOS_SAC_ALPHANUM     = .false.
-OUTPUT_SEISMOS_SAC_BINARY       = .false.
-OUTPUT_SEISMOS_ASDF             = .false.
-OUTPUT_SEISMOS_3D_ARRAY         = .false.
-OUTPUT_SEISMOS_HDF5             = .false.
+# save seismograms in binary or ASCII format (binary is smaller but may not be portable between machines)
+USE_BINARY_FOR_SEISMOGRAMS      = .false.
 
-# rotate seismograms to Radial-Transverse-Z or use default North-East-Z reference frame
-ROTATE_SEISMOGRAMS_RT           = .false.
+# output seismograms in Seismic Unix format (binary with 240-byte-headers)
+SU_FORMAT                       = .false.
+
+# output seismograms in ASDF (requires asdf-library)
+ASDF_FORMAT                     = .false.
+
+# output seismograms in HDF5 (requires hdf5-library and WRITE_SEISMOGRAMS_BY_MAIN)
+HDF5_FORMAT                     = .false.
 
 # decide if main process writes all the seismograms or if all processes do it in parallel
 WRITE_SEISMOGRAMS_BY_MAIN       = .false.
@@ -308,22 +258,39 @@ WRITE_SEISMOGRAMS_BY_MAIN       = .false.
 # save all seismograms in one large combined file instead of one file per seismogram
 # to avoid overloading shared non-local file systems such as LUSTRE or GPFS for instance
 SAVE_ALL_SEISMOS_IN_ONE_FILE    = .false.
-USE_BINARY_FOR_LARGE_FILE       = .false.
 
-# flag to impose receivers at the surface or allow them to be buried
-RECEIVERS_CAN_BE_BURIED         = .true.
+# use a trick to increase accuracy of pressure seismograms in fluid (acoustic) elements:
+# use the second derivative of the source for the source time function instead of the source itself,
+# and then record -potential_acoustic() as pressure seismograms instead of -potential_dot_dot_acoustic();
+# this is mathematically equivalent, but numerically significantly more accurate because in the explicit
+# Newmark time scheme acceleration is accurate at zeroth order while displacement is accurate at second order,
+# thus in fluid elements potential_dot_dot_acoustic() is accurate at zeroth order while potential_acoustic()
+# is accurate at second order and thus contains significantly less numerical noise.
+USE_TRICK_FOR_BETTER_PRESSURE   = .false.
 
 #-----------------------------------------------------------
 #
-#  Adjoint kernel outputs
+# Energy calculation
+#
+#-----------------------------------------------------------
+
+# to plot energy curves, for instance to monitor how CPML absorbing layers behave;
+# should be turned OFF in most cases because a bit expensive
+OUTPUT_ENERGY                   = .false.
+# every how many time steps we compute energy (which is a bit expensive to compute)
+NTSTEP_BETWEEN_OUTPUT_ENERGY    = 10
+
+#-----------------------------------------------------------
+#
+# Adjoint kernel outputs
 #
 #-----------------------------------------------------------
 
 # interval in time steps for reading adjoint traces
 # 0 = read the whole adjoint sources at start time
-NTSTEP_BETWEEN_READ_ADJSRC      = 10000
+NTSTEP_BETWEEN_READ_ADJSRC      = 0
 
-# use ASDF format for reading the adjoint sources
+# read adjoint sources using ASDF (requires asdf-library)
 READ_ADJSRC_ASDF                = .false.
 
 # this parameter must be set to .true. to compute anisotropic kernels
@@ -331,39 +298,39 @@ READ_ADJSRC_ASDF                = .false.
 # default is .false. to compute isotropic kernels (related to alpha and beta)
 ANISOTROPIC_KL                  = .false.
 
-# output only transverse isotropic kernels (alpha_v,alpha_h,beta_v,beta_h,eta,rho)
-# rather than fully anisotropic kernels when ANISOTROPIC_KL above is set to .true.
-# means to save radial anisotropic kernels, i.e., sensitivity kernels for beta_v, beta_h, etc.
-SAVE_TRANSVERSE_KL_ONLY         = .false.
+# compute transverse isotropic kernels (alpha_v,alpha_h,beta_v,beta_h,eta,rho)
+# rather than fully anisotropic kernels in case ANISOTROPIC_KL is set to .true.
+SAVE_TRANSVERSE_KL              = .false.
 
-# output only the kernels used for the current azimuthally anisotropic inversions of surface waves,
-# i.e., bulk_c, bulk_betav, bulk_betah, eta, Gc_prime, Gs_prime and rho
-# (Gc' & Gs' which are the normalized Gc & Gs kernels by isotropic \rho\beta of the 1D reference model)
-SAVE_AZIMUTHAL_ANISO_KL_ONLY    = .false.
+# this parameter must be set to .true. to compute anisotropic kernels for
+# cost function using velocity observable rather than displacement
+ANISOTROPIC_VELOCITY_KL         = .false.
 
-# output approximate Hessian in crust mantle region.
-# means to save the preconditioning for gradients, they are cross correlations between forward and adjoint accelerations.
+# outputs approximate Hessian for preconditioning
 APPROXIMATE_HESS_KL             = .false.
 
-# forces transverse isotropy for all mantle elements
-# (default is to use transverse isotropy only between crust and 220)
-# means we allow radial anisotropy throughout the whole crust/mantle region
-USE_FULL_TISO_MANTLE            = .false.
-
-# output kernel mask to zero out source region
-# to remove large values near the sources in the sensitivity kernels
-SAVE_SOURCE_MASK                = .false.
-
-# output kernels on a regular grid instead of on the GLL mesh points (a bit expensive)
-SAVE_REGULAR_KL                 = .false.
-
-# compute steady state kernels for source encoding
-STEADY_STATE_KERNEL             = .false.
-STEADY_STATE_LENGTH_IN_MINUTES  = 0.d0
+# save Moho mesh and compute Moho boundary kernels
+SAVE_MOHO_MESH                  = .false.
 
 #-----------------------------------------------------------
+#
+# Coupling with an injection technique (DSM, AxiSEM, or FK)
+#
+#-----------------------------------------------------------
+COUPLE_WITH_INJECTION_TECHNIQUE = .false.
+INJECTION_TECHNIQUE_TYPE        = 3   # 1 = DSM, 2 = AxiSEM, 3 = FK
+MESH_A_CHUNK_OF_THE_EARTH       = .false.
+TRACTION_PATH                   = DATA/AxiSEM_tractions/3/
+FKMODEL_FILE                    = FKmodel
+RECIPROCITY_AND_KH_INTEGRAL     = .false.   # does not work yet
 
-# Dimitri Komatitsch, July 2014, CNRS Marseille, France:
+#-----------------------------------------------------------
+#
+# Run modes
+#
+#-----------------------------------------------------------
+
+# Simultaneous runs
 # added the ability to run several calculations (several earthquakes)
 # in an embarrassingly-parallel fashion from within the same run;
 # this can be useful when using a very large supercomputer to compute
@@ -408,30 +375,24 @@ NUMBER_OF_SIMULTANEOUS_RUNS     = 1
 # In that case there is no need to duplicate the mesh and model file database (the content of the DATABASES_MPI
 # directories) in each of the run0001, run0002,... directories, it is sufficient to have one in run0001
 # and the code will broadcast it to the others)
-BROADCAST_SAME_MESH_AND_MODEL   = .false.
+BROADCAST_SAME_MESH_AND_MODEL   = .true.
 
 #-----------------------------------------------------------
 
 # set to true to use GPUs
 GPU_MODE                        = .false.
-# Only used if GPU_MODE = .true. :
-GPU_RUNTIME                     = 1
-# 2 (OpenCL), 1 (Cuda) ou 0 (Compile-time -- does not work if configured with --with-cuda *AND* --with-opencl)
-GPU_PLATFORM                    = NVIDIA
-GPU_DEVICE                      = Tesla
 
-# set to true to use the ADIOS library for I/Os
+# ADIOS Options for I/Os
 ADIOS_ENABLED                   = .false.
-ADIOS_FOR_FORWARD_ARRAYS        = .true.
-ADIOS_FOR_MPI_ARRAYS            = .true.
-ADIOS_FOR_ARRAYS_SOLVER         = .true.
-ADIOS_FOR_SOLVER_MESHFILES      = .true.
-ADIOS_FOR_AVS_DX                = .true.
-ADIOS_FOR_KERNELS               = .true.
-ADIOS_FOR_MODELS                = .true.
-ADIOS_FOR_UNDO_ATTENUATION      = .true.
+ADIOS_FOR_DATABASES             = .false.
+ADIOS_FOR_MESH                  = .false.
+ADIOS_FOR_FORWARD_ARRAYS        = .false.
+ADIOS_FOR_KERNELS               = .false.
+ADIOS_FOR_UNDO_ATTENUATION      = .false.
 
 # HDF5 Database I/O
 # (note the flags for HDF5 and ADIOS are mutually exclusive, only one can be used)
 HDF5_ENABLED                    = .false.
+HDF5_FOR_MOVIES                 = .false.
+HDF5_IO_NODES                   = 0   # HDF5 IO server with number of IO dedicated procs
 

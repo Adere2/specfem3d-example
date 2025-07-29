@@ -1,83 +1,89 @@
 #!/bin/bash
-#
-# regional simulation example
-#
-# script runs mesher and solver using mpirun
-# on 4 CPUs
-#
-# synthetics have an approximate shortest period ~ 15 s
-#
-# modify accordingly for your own system specifics
-##################################################
 
 echo "running example: `date`"
 currentdir=`pwd`
 
-echo "directory: $currentdir"
-echo "(will take about 15 minutes)"
-echo
-
-# sets up directory structure in current example directoy
+# sets up directory structure in current example directory
 echo
 echo "   setting up example..."
 echo
 
-mkdir -p DATABASES_MPI
-mkdir -p OUTPUT_FILES
-
-rm -rf DATABASES_MPI/*
-rm -rf OUTPUT_FILES/*
-
 # checks if executables were compiled and available
-if [ ! -e ../../bin/xspecfem3D ]; then
-  echo "Compiling first all binaries in the root directory..."
-  echo
-
-  # compiles executables in root directory
-  # using default configuration
-  cd ../../
-
-  # only in case static compilation would have been set to yes in Makefile:
-  cp $currentdir/DATA/Par_file DATA/Par_file
-
-  # compiles code
-  make clean
-  make -j4 all
-
-  # checks exit code
-  if [[ $? -ne 0 ]]; then exit 1; fi
-
-  # backup of constants setup
-  cp setup/* $currentdir/OUTPUT_FILES/
-  if [ -e OUTPUT_FILES/values_from_mesher ]; then
-    cp OUTPUT_FILES/values_from_mesher.h $currentdir/OUTPUT_FILES/values_from_mesher.h.compilation
-  fi
-  cp DATA/Par_file $currentdir/OUTPUT_FILES/
-
-  cd $currentdir
+if [ ! -e ../../../bin/xspecfem3D ]; then
+  echo "Please compile first all binaries in the root directory, before running this example..."; echo
+  exit 1
 fi
 
-# copy executables
-mkdir -p bin
-rm -rf bin/*
-cp ../../bin/x* ./bin/
+# cleans output files
+mkdir -p OUTPUT_FILES
+rm -rf OUTPUT_FILES/*
 
-# links data directories needed to run example in this current directory with s362ani
-cd DATA/
-ln -s ../../../DATA/crust2.0
-ln -s ../../../DATA/s362ani
-ln -s ../../../DATA/QRFSI12
-ln -s ../../../DATA/topo_bathy
+# links executables
+mkdir -p bin
+cd bin/
+rm -f *
+ln -s ../../../../bin/xdecompose_mesh
+ln -s ../../../../bin/xgenerate_databases
+ln -s ../../../../bin/xspecfem3D
 cd ../
 
-# run mesher & solver
-echo
-echo "  running script..."
-echo
-./run_mesher_solver.bash
+# stores setup
+cp DATA/Par_file OUTPUT_FILES/
+cp DATA/CMTSOLUTION OUTPUT_FILES/
+cp DATA/STATIONS OUTPUT_FILES/
 
+# get the number of processors, ignoring comments in the Par_file
+NPROC=`grep ^NPROC DATA/Par_file | grep -v -E '^[[:space:]]*#' | cut -d = -f 2`
+
+BASEMPIDIR=`grep ^LOCAL_PATH DATA/Par_file | cut -d = -f 2 `
+mkdir -p $BASEMPIDIR
+
+# decomposes mesh using the pre-saved mesh files in MESH-default
+echo
+echo "  decomposing mesh..."
+echo
+./bin/xdecompose_mesh $NPROC ./MESH-default $BASEMPIDIR
 # checks exit code
 if [[ $? -ne 0 ]]; then exit 1; fi
 
+# runs database generation
+if [ "$NPROC" -eq 1 ]; then
+  # This is a serial simulation
+  echo
+  echo "  running database generation..."
+  echo
+  ./bin/xgenerate_databases
+else
+  # This is a MPI simulation
+  echo
+  echo "  running database generation on $NPROC processors..."
+  echo
+  mpirun -np $NPROC ./bin/xgenerate_databases
+fi
+# checks exit code
+if [[ $? -ne 0 ]]; then exit 1; fi
+
+# runs simulation
+if [ "$NPROC" -eq 1 ]; then
+  # This is a serial simulation
+  echo
+  echo "  running solver..."
+  echo
+  ./bin/xspecfem3D
+else
+  # This is a MPI simulation
+  echo
+  echo "  running solver on $NPROC processors..."
+  echo
+  mpirun -np $NPROC ./bin/xspecfem3D
+fi
+# checks exit code
+if [[ $? -ne 0 ]]; then exit 1; fi
+
+echo
+echo "see results in directory: OUTPUT_FILES/"
+echo
+echo "done"
 echo `date`
+
 

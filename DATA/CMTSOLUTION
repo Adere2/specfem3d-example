@@ -1,13 +1,13 @@
-PDEW 2008  1  6  5 14 23.70  37.2200   22.6900  75.0 6.1 6.2 SOUTHERN GREECE
-event name:     200801060514A
-time shift:      0.000
-half duration:   3.0000
-latitude:       36.9800
-longitude:      22.8700
-depth:          92.3900
-Mrr:       7.740000e+24
-Mtt:      -1.830000e+25
-Mpp:       1.060000e+25
-Mrt:       1.290000e+25
-Mrp:      -8.450000e+24
-Mtp:      -4.430000e+24
+PDE  1999 01 01 00 00 00.00  67000 67000 -25000 4.2 4.2 homog_test
+event name:       homog_test
+time shift:       0.0000
+half duration:    5.0
+latorUTM:       67000.0
+longorUTM:      67000.0
+depth:          30.0
+Mrr:      -7.600000e+27
+Mtt:       7.700000e+27
+Mpp:      -2.000000e+26
+Mrt:      -2.500000e+28
+Mrp:       4.000000e+26
+Mtp:      -2.500000e+27
